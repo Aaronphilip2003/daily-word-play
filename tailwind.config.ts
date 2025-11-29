@@ -47,15 +47,21 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        correct: {
+          DEFAULT: "hsl(var(--correct))",
+          foreground: "hsl(var(--correct-foreground))",
+        },
+        present: {
+          DEFAULT: "hsl(var(--present))",
+          foreground: "hsl(var(--present-foreground))",
+        },
+        absent: {
+          DEFAULT: "hsl(var(--absent))",
+          foreground: "hsl(var(--absent-foreground))",
+        },
+        tile: {
+          empty: "hsl(var(--tile-empty))",
+          border: "hsl(var(--tile-border))",
         },
       },
       borderRadius: {
@@ -80,10 +86,46 @@ export default {
             height: "0",
           },
         },
+        "flip-in": {
+          "0%": {
+            transform: "rotateX(0deg)",
+          },
+          "50%": {
+            transform: "rotateX(-90deg)",
+          },
+          "100%": {
+            transform: "rotateX(0deg)",
+          },
+        },
+        "pop": {
+          "0%": {
+            transform: "scale(1)",
+          },
+          "50%": {
+            transform: "scale(1.1)",
+          },
+          "100%": {
+            transform: "scale(1)",
+          },
+        },
+        "shake": {
+          "0%, 100%": {
+            transform: "translateX(0)",
+          },
+          "25%": {
+            transform: "translateX(-8px)",
+          },
+          "75%": {
+            transform: "translateX(8px)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "flip-in": "flip-in 0.6s ease-in-out",
+        "pop": "pop 0.2s ease-in-out",
+        "shake": "shake 0.4s ease-in-out",
       },
     },
   },
