@@ -10,8 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getRandomWord, isValidWord } from "@/lib/wordList";
-import { checkGuess, getKeyboardLetterStatus, LetterStatus } from "@/lib/gameLogic";
+import { getRandomWord } from "@/lib/wordList";
+import {
+  checkGuess,
+  getKeyboardLetterStatus,
+  LetterStatus,
+} from "@/lib/gameLogic";
 import { getStats, updateStats, GameStats } from "@/lib/stats";
 import { toast } from "sonner";
 
@@ -19,99 +23,122 @@ const MAX_GUESSES = 6;
 const WORD_LENGTH = 5;
 
 const Index = () => {
-  const [solution, setSolution] = useState(getRandomWord());
+  const [solution, setSolution] = useState("");
   const [guesses, setGuesses] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState("");
-  const [gameStatus, setGameStatus] = useState<'playing' | 'won' | 'lost'>('playing');
-  const [evaluations, setEvaluations] = useState<Map<number, { letter: string; status: LetterStatus }[]>>(new Map());
-  const [letterStatuses, setLetterStatuses] = useState<Map<string, LetterStatus>>(new Map());
+  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">(
+    "playing"
+  );
+  const [evaluations, setEvaluations] = useState<
+    Map<number, { letter: string; status: LetterStatus }[]>
+  >(new Map());
+  const [letterStatuses, setLetterStatuses] = useState<
+    Map<string, LetterStatus>
+  >(new Map());
   const [shake, setShake] = useState(false);
   const [stats, setStats] = useState<GameStats>(getStats());
   const [showStats, setShowStats] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
-  // Update keyboard letter statuses whenever guesses change
+  useEffect(() => {
+    const fetchWord = async () => {
+      try {
+        const word = await getRandomWord();
+        setSolution(word);
+      } catch (error) {
+        console.error("Failed to fetch word:", error);
+        toast.error("Failed to load game. Please try again later.");
+      }
+    };
+
+    fetchWord();
+  }, []);
+
   useEffect(() => {
     setLetterStatuses(getKeyboardLetterStatus(guesses, solution));
   }, [guesses, solution]);
 
-  const handleKeyPress = useCallback((key: string) => {
-    if (gameStatus !== 'playing') return;
+  const handleKeyPress = useCallback(
+    (key: string) => {
+      if (gameStatus !== "playing") return;
 
-    if (key === 'ENTER') {
-      if (currentGuess.length !== WORD_LENGTH) {
-        setShake(true);
-        setTimeout(() => setShake(false), 400);
-        toast.error("Not enough letters");
-        return;
+      if (key === "ENTER") {
+        if (currentGuess.length !== WORD_LENGTH) {
+          setShake(true);
+          setTimeout(() => setShake(false), 400);
+          toast.error("Not enough letters");
+          return;
+        }
+
+        const newGuesses = [...guesses, currentGuess];
+        setGuesses(newGuesses);
+
+        const evaluation = checkGuess(currentGuess, solution);
+        setEvaluations(new Map(evaluations).set(guesses.length, evaluation));
+
+        if (currentGuess === solution) {
+          setGameStatus("won");
+          const newStats = updateStats(true, newGuesses.length);
+          setStats(newStats);
+          setTimeout(() => setShowStats(true), 1500);
+          toast.success("Congratulations! 🎉");
+        } else if (newGuesses.length >= MAX_GUESSES) {
+          setGameStatus("lost");
+          const newStats = updateStats(false, newGuesses.length);
+          setStats(newStats);
+          setTimeout(() => setShowStats(true), 1500);
+          toast.error(`The word was ${solution}`);
+        }
+
+        setCurrentGuess("");
+      } else if (key === "BACKSPACE") {
+        setCurrentGuess(currentGuess.slice(0, -1));
+      } else if (currentGuess.length < WORD_LENGTH) {
+        setCurrentGuess(currentGuess + key);
       }
+    },
+    [currentGuess, guesses, solution, gameStatus, evaluations]
+  );
 
-      if (!isValidWord(currentGuess)) {
-        setShake(true);
-        setTimeout(() => setShake(false), 400);
-        toast.error("Not in word list");
-        return;
-      }
-
-      const newGuesses = [...guesses, currentGuess];
-      setGuesses(newGuesses);
-
-      const evaluation = checkGuess(currentGuess, solution);
-      setEvaluations(new Map(evaluations).set(guesses.length, evaluation));
-
-      if (currentGuess === solution) {
-        setGameStatus('won');
-        const newStats = updateStats(true, newGuesses.length);
-        setStats(newStats);
-        setTimeout(() => setShowStats(true), 1500);
-        toast.success("Congratulations! 🎉");
-      } else if (newGuesses.length >= MAX_GUESSES) {
-        setGameStatus('lost');
-        const newStats = updateStats(false, newGuesses.length);
-        setStats(newStats);
-        setTimeout(() => setShowStats(true), 1500);
-        toast.error(`The word was ${solution}`);
-      }
-
-      setCurrentGuess("");
-    } else if (key === 'BACKSPACE') {
-      setCurrentGuess(currentGuess.slice(0, -1));
-    } else if (currentGuess.length < WORD_LENGTH) {
-      setCurrentGuess(currentGuess + key);
-    }
-  }, [currentGuess, guesses, solution, gameStatus, evaluations]);
-
-  // Physical keyboard support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) return;
 
-      if (e.key === 'Enter') {
-        handleKeyPress('ENTER');
-      } else if (e.key === 'Backspace') {
-        handleKeyPress('BACKSPACE');
+      if (e.key === "Enter") {
+        handleKeyPress("ENTER");
+      } else if (e.key === "Backspace") {
+        handleKeyPress("BACKSPACE");
       } else if (/^[a-zA-Z]$/.test(e.key)) {
         handleKeyPress(e.key.toUpperCase());
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyPress]);
 
-  const startNewGame = () => {
-    setSolution(getRandomWord());
-    setGuesses([]);
-    setCurrentGuess("");
-    setGameStatus('playing');
-    setEvaluations(new Map());
-    setLetterStatuses(new Map());
-    setShowStats(false);
-    setStats(getStats());
+  const startNewGame = async () => {
+    try {
+      const word = await getRandomWord();
+      setSolution(word);
+      setGuesses([]);
+      setCurrentGuess("");
+      setGameStatus("playing");
+      setEvaluations(new Map());
+      setLetterStatuses(new Map());
+      setShake(false);
+      toast.success("New game started!");
+    } catch (error) {
+      console.error("Failed to start new game:", error);
+      toast.error("Failed to start new game. Please try again later.");
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--gradient-bg)' }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: "var(--gradient-bg)" }}
+    >
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -123,11 +150,11 @@ const Index = () => {
           >
             <HelpCircle className="w-5 h-5" />
           </Button>
-          
+
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Wordle Unlimited
           </h1>
-          
+
           <Button
             variant="ghost"
             size="icon"
@@ -151,7 +178,7 @@ const Index = () => {
           />
         </div>
 
-        {gameStatus !== 'playing' && (
+        {gameStatus !== "playing" && (
           <Button
             onClick={startNewGame}
             size="lg"
@@ -162,10 +189,7 @@ const Index = () => {
           </Button>
         )}
 
-        <Keyboard
-          onKeyPress={handleKeyPress}
-          letterStatuses={letterStatuses}
-        />
+        <Keyboard onKeyPress={handleKeyPress} letterStatuses={letterStatuses} />
       </main>
 
       {/* Stats Dialog */}
@@ -174,8 +198,8 @@ const Index = () => {
         onOpenChange={setShowStats}
         stats={stats}
         onNewGame={startNewGame}
-        gameWon={gameStatus === 'won'}
-        gameLost={gameStatus === 'lost'}
+        gameWon={gameStatus === "won"}
+        gameLost={gameStatus === "lost"}
       />
 
       {/* Help Dialog */}
@@ -186,9 +210,10 @@ const Index = () => {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <p className="text-muted-foreground">
-              Guess the word in 6 tries. After each guess, the color of the tiles will change to show how close your guess was.
+              Guess the word in 6 tries. After each guess, the color of the
+              tiles will change to show how close your guess was.
             </p>
-            
+
             <div className="space-y-3">
               <div>
                 <div className="flex gap-1 mb-2">
@@ -209,7 +234,8 @@ const Index = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground">
-                  <span className="font-semibold text-foreground">W</span> is in the word and in the correct spot
+                  <span className="font-semibold text-foreground">W</span> is in
+                  the word and in the correct spot
                 </p>
               </div>
 
@@ -232,7 +258,8 @@ const Index = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground">
-                  <span className="font-semibold text-foreground">L</span> is in the word but in the wrong spot
+                  <span className="font-semibold text-foreground">L</span> is in
+                  the word but in the wrong spot
                 </p>
               </div>
 
@@ -255,7 +282,8 @@ const Index = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground">
-                  <span className="font-semibold text-foreground">G</span> is not in the word
+                  <span className="font-semibold text-foreground">G</span> is
+                  not in the word
                 </p>
               </div>
             </div>
